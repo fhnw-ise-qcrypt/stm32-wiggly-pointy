@@ -68,6 +68,8 @@ void Error_Handler(void);
 #define SPI1_IRQ_EXTI_IRQn EXTI1_IRQn
 #define SPI2_CS_Pin GPIO_PIN_14
 #define SPI2_CS_GPIO_Port GPIOB
+#define MEMS_EN_Pin GPIO_PIN_8
+#define MEMS_EN_GPIO_Port GPIOA
 /* USER CODE BEGIN Private defines */
 /**
  *  @see https://github.com/STMicroelectronics/STM32CubeF4/blob/master/Projects/STM32F401RE-Nucleo/Examples/UART/UART_Printf/Src/main.c
