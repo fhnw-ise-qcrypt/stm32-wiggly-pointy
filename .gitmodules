@@ -1,0 +1,3 @@
+[submodule "Drivers/MCP3564"]
+	path = Drivers/MCP3564
+	url = git@github.com:fhnw-ise-qcrypt/mcp3564.git
