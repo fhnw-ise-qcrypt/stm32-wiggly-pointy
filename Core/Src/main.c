@@ -113,6 +113,7 @@ int main(void)
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
   printf("boink\n");
+  /*
   HAL_TIM_Base_Start(&htim17);
   HAL_TIM_OC_Start(&htim17, TIM_CHANNEL_1);
   HAL_Delay(10);
@@ -127,6 +128,7 @@ int main(void)
   HAL_Delay(10);
   MCP3561_PrintRegisters(&hspi1);
   printf("\n");
+  */
 
   setup_done = true;
 
@@ -643,4 +645,3 @@ void assert_failed(uint8_t *file, uint32_t line)
 }
 #endif /* USE_FULL_ASSERT */
 
-/************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
