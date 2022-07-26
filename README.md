@@ -11,14 +11,16 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 
 ### Tasks
 
-- 🔄 test PCB board no. 1
-	+ 🔘 USART debug communication with PC
+- ✅ test PCB board no. 1
+	+ ✅ USART debug communication with PC working
+	+ ✅ LEDs working
+	+ ✅ SPI, ADC working (responding)
 - 🔄 seperate PSD board
 	+ 🔄 place PSD sensor 
 	+ 🔘 place potentiometer
 	+ 🔘 configure offest voltage
-- 🔘 **MCP3564** ADC from PSD functionality
-	+ 🔘 TIM triggered DMA of SPI for ADC
+- 🔄 **MCP3564** ADC from PSD functionality
+	+ 🔄 TIM triggered DMA of SPI for ADC
 	+ 🔘 calibrate ADC voltage values
 	+ 🔘 calibrate PSD position values (**how?**)
 - 🔘 **AD5664R** DAC for MEMS mirror functionality

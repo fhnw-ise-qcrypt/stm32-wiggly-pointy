@@ -113,7 +113,7 @@ int main(void)
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
   printf("boink\n");
-  /*
+
   HAL_TIM_Base_Start(&htim17);
   HAL_TIM_OC_Start(&htim17, TIM_CHANNEL_1);
   HAL_Delay(10);
@@ -128,7 +128,7 @@ int main(void)
   HAL_Delay(10);
   MCP3561_PrintRegisters(&hspi1);
   printf("\n");
-  */
+
 
   setup_done = true;
 
@@ -141,9 +141,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //MCP3561_PrintRegisters();
-	  //printf("\n");
-	  HAL_Delay(100);
+	  MCP3561_PrintRegisters(&hspi1);
+	  /*
+	   * CONF0: 03
+	   * CONF1: dc
+	   * CONF2: 8b
+	   * CONF3: d0
+	   * IRQ  : 37
+	   * MUX  : 01
+	   */
+	  printf("\n");
+	  HAL_Delay(1000);
+	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
+	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
+
 	  printf("%d\n", (int)adc_val);  // updated in ISR
   }
   /* USER CODE END 3 */
