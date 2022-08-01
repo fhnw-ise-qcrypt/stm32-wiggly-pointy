@@ -67,6 +67,13 @@
  * */
 #define VREF_2V5_CALIBRATED (2.58f)
 
+/* @brief MEMS mirror bias voltage (taken from datasheet of specific mirror)
+ * Example, if a device datasheet states Vbias of 80V:
+ * The Vbias digital value would be (80/200)*65535 = 26214
+ * @todo  find datasheet of S/N irgendöppis
+ */
+#define MEMS_VBIAS_CODE (uint32_t)(65535/200)*100)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -144,6 +151,12 @@ int main(void)
   MX_TIM16_Init();
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
+
+  /* @important DIABLE HIGH VOLTAGE MEMS DRIVER !
+   * @see   p. 24 of MEMS_Drivers_5.x_User_Guide.pdf
+   * @note  ACTIVE HIGH --> LOW = disabled */
+  HAL_GPIO_WritePin(MEMS_HV_EN_GPIO_Port, MEMS_HV_EN_Pin, GPIO_RESET);
+
   printf("boink\n");
 
   // start MEMS FCLK_X
@@ -171,6 +184,37 @@ int main(void)
 
 
   setup_done = true;
+
+  /* @brief MEMS mirror DAC setup
+   * Set up DAC. Following the AD5664 DAC datasheet, we recommend the following
+   * initialization sequence which must be run by the master controller which
+   * communicates commands to the PicoAmp on every power up of the PicoAmp.
+   * The sequence is to reset the DAC, turn on its internal reference,
+   * enable all 4 channels, and set up for software loading.
+   *
+   * 2621441 Decimal or 0x280001 to command FULL RESET
+   * 3670017 Decimal or 0x380001 to command ENABLE INTERNAL REFERENCE
+   * 2097167 Decimal or 0x20000F to command ENABLE ALL DAC CHANNELS
+   * 3145728 Decimal or 0x300000 to command ENABLE SOFTWARE LDAC
+   */
+
+  uint8_t dac_data[8];
+  dac_data[0] = 0x28;
+  dac_data[1] = 0x00;
+  dac_Data[2] = 0x01;
+  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // FULL RESET
+  dac_data[0] = 0x38;
+  dac_data[1] = 0x00;
+  dac_Data[2] = 0x01;
+  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE INTERNAL REFERENCE
+  dac_data[0] = 0x20;
+  dac_data[1] = 0x00;
+  dac_Data[2] = 0x0F;
+  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE ALL DAC CHANNELS
+  dac_data[0] = 0x30;
+  dac_data[1] = 0x00;
+  dac_Data[2] = 0x00;
+  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
 
   /* USER CODE END 2 */
 
