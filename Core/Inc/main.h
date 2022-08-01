@@ -61,6 +61,9 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
+#define TIM14_COUNT_PERIOD (64000-1)
+#define TIM13_COUNT_PERIOD (64000-1)
+#define TIM16_COUNT_PERIOD (64000-1)
 #define SPI1_CS_Pin GPIO_PIN_4
 #define SPI1_CS_GPIO_Port GPIOA
 #define SPI1_IRQ_Pin GPIO_PIN_1
@@ -70,6 +73,10 @@ void Error_Handler(void);
 #define SPI2_CS_GPIO_Port GPIOB
 #define MEMS_HV_EN_Pin GPIO_PIN_8
 #define MEMS_HV_EN_GPIO_Port GPIOA
+#define FCLK_X_Pin GPIO_PIN_10
+#define FCLK_X_GPIO_Port GPIOA
+#define FCLK_Y_Pin GPIO_PIN_12
+#define FCLK_Y_GPIO_Port GPIOA
 #define LED1_Pin GPIO_PIN_6
 #define LED1_GPIO_Port GPIOB
 #define LED2_Pin GPIO_PIN_7

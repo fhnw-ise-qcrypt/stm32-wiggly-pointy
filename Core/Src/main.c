@@ -33,6 +33,29 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+/* User must provide filter clock for the 5th order Bessel low pass filters.
+ * When this clock is not running, output voltages do not update or
+ * follow the input. The clock (FCLK) can be driven by ~3V TTL, 50% duty cycle.
+ * Set clock frequency to the desired filter cut off frequency x 60
+ * E.g.: Device datasheet (on the right) states
+ * "Recommended LPF cut off freq" of 1000Hz,
+ * then FCLK Input = 60kHz
+ * TIM channels are "toggle on match", so output is half the frequency of
+ * the TIM period. e.g. desired = 1kHz @CPU = 64MHz
+ * Period = (64MHz/1kHz/2 -1) = (32000-1)
+ * @todo find appropriate low pass cuttoff frequency
+ */
+// TIM14_CH1 is FCLK_X (MEMS X-axis filter clock)
+#ifdef TIM14_COUNT_PERIOD
+	#undef TIM14_COUNT_PERIOD
+	#define TIM14_COUNT_PERIOD (32000-1)
+#endif
+// TIM16_CH1 is FCLK_Y (MEMS Y-axis filter clock)
+#ifdef TIM16_COUNT_PERIOD
+	#undef TIM16_COUNT_PERIOD
+	#define TIM16_COUNT_PERIOD (32000-1)
+#endif
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -47,7 +70,6 @@ SPI_HandleTypeDef hspi2;
 TIM_HandleTypeDef htim13;
 TIM_HandleTypeDef htim14;
 TIM_HandleTypeDef htim16;
-TIM_HandleTypeDef htim17;
 
 UART_HandleTypeDef huart2;
 
@@ -62,7 +84,6 @@ void SystemClock_Config(void);
 static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
-static void MX_TIM17_Init(void);
 static void MX_USART2_UART_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_TIM16_Init(void);
@@ -106,7 +127,6 @@ int main(void)
   MX_GPIO_Init();
   MX_SPI1_Init();
   MX_SPI2_Init();
-  MX_TIM17_Init();
   MX_USART2_UART_Init();
   MX_TIM14_Init();
   MX_TIM16_Init();
@@ -114,8 +134,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("boink\n");
 
-  HAL_TIM_Base_Start(&htim17);
-  HAL_TIM_OC_Start(&htim17, TIM_CHANNEL_1);
+  HAL_TIM_Base_Start(&htim14);
+  HAL_TIM_OC_Start(&htim14, TIM_CHANNEL_1);
+  //htim14.Instance->CCR1 = 2;
+  HAL_TIM_Base_Start(&htim16);
+  HAL_TIM_OC_Start(&htim16, TIM_CHANNEL_1);
+  //htim16.Instance->CCR1 = 2;
   HAL_Delay(10);
 
   MCP3561_Reset(&hspi1);
@@ -141,7 +165,7 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  MCP3561_PrintRegisters(&hspi1);
+	  // MCP3561_PrintRegisters(&hspi1);
 	  /*
 	   * CONF0: 03
 	   * CONF1: dc
@@ -150,12 +174,12 @@ int main(void)
 	   * IRQ  : 37
 	   * MUX  : 01
 	   */
-	  printf("\n");
+	  //printf("\n");
 	  HAL_Delay(1000);
 	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 
-	  printf("%d\n", (int)adc_val);  // updated in ISR
+	  //printf("%d\n", (int)adc_val);  // updated in ISR
   }
   /* USER CODE END 3 */
 }
@@ -304,7 +328,7 @@ static void MX_TIM13_Init(void)
   htim13.Instance = TIM13;
   htim13.Init.Prescaler = 0;
   htim13.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim13.Init.Period = 65535;
+  htim13.Init.Period = TIM13_COUNT_PERIOD;
   htim13.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim13.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
   if (HAL_TIM_Base_Init(&htim13) != HAL_OK)
@@ -337,9 +361,9 @@ static void MX_TIM14_Init(void)
   htim14.Instance = TIM14;
   htim14.Init.Prescaler = 0;
   htim14.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim14.Init.Period = 65535;
+  htim14.Init.Period = TIM14_COUNT_PERIOD;
   htim14.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim14.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim14) != HAL_OK)
   {
     Error_Handler();
@@ -348,7 +372,7 @@ static void MX_TIM14_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
@@ -384,10 +408,10 @@ static void MX_TIM16_Init(void)
   htim16.Instance = TIM16;
   htim16.Init.Prescaler = 0;
   htim16.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim16.Init.Period = 65535;
+  htim16.Init.Period = TIM16_COUNT_PERIOD;
   htim16.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
   htim16.Init.RepetitionCounter = 0;
-  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
+  htim16.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_ENABLE;
   if (HAL_TIM_Base_Init(&htim16) != HAL_OK)
   {
     Error_Handler();
@@ -396,7 +420,7 @@ static void MX_TIM16_Init(void)
   {
     Error_Handler();
   }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
+  sConfigOC.OCMode = TIM_OCMODE_TOGGLE;
   sConfigOC.Pulse = 0;
   sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
   sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
@@ -422,68 +446,6 @@ static void MX_TIM16_Init(void)
 
   /* USER CODE END TIM16_Init 2 */
   HAL_TIM_MspPostInit(&htim16);
-
-}
-
-/**
-  * @brief TIM17 Initialization Function
-  * @param None
-  * @retval None
-  */
-static void MX_TIM17_Init(void)
-{
-
-  /* USER CODE BEGIN TIM17_Init 0 */
-
-  /* USER CODE END TIM17_Init 0 */
-
-  TIM_OC_InitTypeDef sConfigOC = {0};
-  TIM_BreakDeadTimeConfigTypeDef sBreakDeadTimeConfig = {0};
-
-  /* USER CODE BEGIN TIM17_Init 1 */
-
-  /* USER CODE END TIM17_Init 1 */
-  htim17.Instance = TIM17;
-  htim17.Init.Prescaler = 0;
-  htim17.Init.CounterMode = TIM_COUNTERMODE_UP;
-  htim17.Init.Period = 65535;
-  htim17.Init.ClockDivision = TIM_CLOCKDIVISION_DIV1;
-  htim17.Init.RepetitionCounter = 0;
-  htim17.Init.AutoReloadPreload = TIM_AUTORELOAD_PRELOAD_DISABLE;
-  if (HAL_TIM_Base_Init(&htim17) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  if (HAL_TIM_OC_Init(&htim17) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sConfigOC.OCMode = TIM_OCMODE_TIMING;
-  sConfigOC.Pulse = 0;
-  sConfigOC.OCPolarity = TIM_OCPOLARITY_HIGH;
-  sConfigOC.OCNPolarity = TIM_OCNPOLARITY_HIGH;
-  sConfigOC.OCFastMode = TIM_OCFAST_DISABLE;
-  sConfigOC.OCIdleState = TIM_OCIDLESTATE_RESET;
-  sConfigOC.OCNIdleState = TIM_OCNIDLESTATE_RESET;
-  if (HAL_TIM_OC_ConfigChannel(&htim17, &sConfigOC, TIM_CHANNEL_1) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  sBreakDeadTimeConfig.OffStateRunMode = TIM_OSSR_DISABLE;
-  sBreakDeadTimeConfig.OffStateIDLEMode = TIM_OSSI_DISABLE;
-  sBreakDeadTimeConfig.LockLevel = TIM_LOCKLEVEL_OFF;
-  sBreakDeadTimeConfig.DeadTime = 0;
-  sBreakDeadTimeConfig.BreakState = TIM_BREAK_DISABLE;
-  sBreakDeadTimeConfig.BreakPolarity = TIM_BREAKPOLARITY_HIGH;
-  sBreakDeadTimeConfig.AutomaticOutput = TIM_AUTOMATICOUTPUT_DISABLE;
-  if (HAL_TIMEx_ConfigBreakDeadTime(&htim17, &sBreakDeadTimeConfig) != HAL_OK)
-  {
-    Error_Handler();
-  }
-  /* USER CODE BEGIN TIM17_Init 2 */
-
-  /* USER CODE END TIM17_Init 2 */
-  HAL_TIM_MspPostInit(&htim17);
 
 }
 
@@ -575,6 +537,14 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB9 */
+  GPIO_InitStruct.Pin = GPIO_PIN_9;
+  GPIO_InitStruct.Mode = GPIO_MODE_AF_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  GPIO_InitStruct.Alternate = GPIO_AF1_TIM17;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
