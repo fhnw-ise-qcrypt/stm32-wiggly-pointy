@@ -34,7 +34,10 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-/* User must provide filter clock for the 5th order Bessel low pass filters.
+/* @brief TIMER Period definitions for MEMS filter clocks
+ * @todo find appropriate low pass cuttoff frequency
+ *
+ * User must provide filter clock for the 5th order Bessel low pass filters.
  * When this clock is not running, output voltages do not update or
  * follow the input. The clock (FCLK) can be driven by ~3V TTL, 50% duty cycle.
  * Set clock frequency to the desired filter cut off frequency x 60
@@ -44,7 +47,6 @@
  * TIM channels are "toggle on match", so output is half the frequency of
  * the TIM period. e.g. desired = 1kHz @CPU = 64MHz
  * Period = (64MHz/1kHz/2 -1) = (32000-1)
- * @todo find appropriate low pass cuttoff frequency
  */
 // TIM14_CH1 is FCLK_X (MEMS X-axis filter clock)
 #ifdef TIM14_COUNT_PERIOD
@@ -56,6 +58,15 @@
 	#undef TIM16_COUNT_PERIOD
 	#define TIM16_COUNT_PERIOD (32000-1)
 #endif
+
+
+/* @brief calibrated, measured ADC reference voltage (2.5V)
+ * @todo  calibrate this voltage with precise multimeter
+ * @date  2022-08-01
+ * @note  equipment: RIGOL DS1104 CH1 500mV/div DC 10:1 (Simon's private device)
+ * */
+#define VREF_2V5_CALIBRATED (2.58f)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -76,6 +87,7 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 volatile uint32_t adc_val;
 volatile bool setup_done;
+float adc_volts;
 
 /* USER CODE END PV */
 
@@ -134,9 +146,12 @@ int main(void)
   /* USER CODE BEGIN 2 */
   printf("boink\n");
 
+  // start MEMS FCLK_X
   HAL_TIM_Base_Start(&htim14);
   HAL_TIM_OC_Start(&htim14, TIM_CHANNEL_1);
   //htim14.Instance->CCR1 = 2;
+
+  // start MEMS FCLK_Y
   HAL_TIM_Base_Start(&htim16);
   HAL_TIM_OC_Start(&htim16, TIM_CHANNEL_1);
   //htim16.Instance->CCR1 = 2;
@@ -147,6 +162,7 @@ int main(void)
   MCP3561_PrintRegisters(&hspi1);
   printf("\n");
 
+  // @note configure the chip inside the Init() function
   MCP3561_Init(&hspi1);
   printf("\n");
   HAL_Delay(10);
@@ -178,6 +194,14 @@ int main(void)
 	  HAL_Delay(1000);
 	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
+
+	  adc_val = MCP3561_ReadADCData(&hspi1);
+	  adc_volts = ((float)adc_val)*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+
+	  printf("%d %.5f V\n", (int)adc_val, adc_volts);  // updated in ISR
+	  // CH1 floating --> 80230 0.02468 V
+	  // CH1 connected to Vref --> 8388607 2.58000 V
+	  // seems correct
 
 	  //printf("%d\n", (int)adc_val);  // updated in ISR
   }
