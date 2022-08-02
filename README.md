@@ -17,15 +17,15 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 	+ ✅ SPI, ADC working (responding)
 - 🔄 seperate PSD board
 	+ 🔄 place PSD sensor 
-	+ 🔘 place potentiometer
+	+ ✅ place potentiometer
 	+ 🔘 configure offest voltage
 - 🔄 **MCP3564** ADC from PSD functionality
 	+ 🔄 TIM triggered DMA of SPI for ADC
 	+ 🔘 calibrate ADC voltage values
 	+ 🔘 calibrate PSD position values (**how?**)
-- 🔘 **AD5664R** DAC for MEMS mirror functionality
-	+ 🔘 include DAC library (not required? just send data?)
-	+ 🔘 generate FCLK for driver board using TIM
+- 🔄 **AD5664R** DAC for MEMS mirror functionality
+	+ 🔄 include DAC library (not required? just send data?)
+	+ ✅ generate FCLK for driver board using TIM
 	+ 🔘 test ⚡️200V⚡️ DC driver without MEMS mirror (sine patterns)
 	+ 🔘 test pattern driver with MEMS mirror
 	+ 🔘 angle-to-DAC linearization/calibration from mirrorcle datasheet
@@ -36,3 +36,16 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 ( ✅ 🔄 ⚠️ 🗓 🔘 )
 
 --- 
+
+### Important Notes
+
+Active UART communication severely impacts the signal measured by the ADC.
+
+Using single polling and printing to UART (measure, print, measure, print...) produces 20mVpp errors!!!
+
+Using multiple polling without active UART (measure, measure, measure, print...) produces 1mVpp errors only.
+
+
+
+
+

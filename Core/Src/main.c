@@ -215,7 +215,7 @@ int main(void)
   dac_data[1] = 0x00;
   dac_data[2] = 0x00;
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
-
+  MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -225,24 +225,40 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  // MCP3561_PrintRegisters(&hspi1);
-	  /*
-	   * CONF0: 03
-	   * CONF1: dc
-	   * CONF2: 8b
-	   * CONF3: d0
-	   * IRQ  : 37
-	   * MUX  : 01
-	   */
 	  //printf("\n");
-	  HAL_Delay(1000);
+	  //HAL_Delay(100);
 	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
+	  uint32_t adc_lsb[4];
+	  float adc_volt[4];
 
-	  adc_val = MCP3561_ReadADCData(&hspi1);
-	  adc_volts = ((float)adc_val)*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
+	  HAL_Delay(81);
+	  adc_lsb[0] = MCP3561_ReadADCData(&hspi1);
+	  adc_volt[0] = ((float)adc_lsb[0])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	  printf("CH1 \t%d \t%.5f\n", (int)adc_lsb[0], adc_volt[0]);
 
-	  printf("%d %.5f V\n", (int)adc_val, adc_volts);  // updated in ISR
+	  /*
+	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH2, MCP3561_MUX_CH3);
+	  HAL_Delay(81);
+	  adc_lsb[1] = MCP3561_ReadADCData(&hspi1);
+	  adc_volt[1] = ((float)adc_lsb[1])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	  //printf("CH2 \t%d %.5f V\n", (int)adc_val, adc_volts);
+
+	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH4, MCP3561_MUX_CH5);
+	  HAL_Delay(81);
+	  adc_lsb[2] = MCP3561_ReadADCData(&hspi1);
+	  adc_volt[2] = ((float)adc_lsb[2])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	  //printf("CH3 \t%d %.5f V\n", (int)adc_val, adc_volts);
+
+	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH6, MCP3561_MUX_CH7);
+	  HAL_Delay(81);
+	  adc_lsb[3] = MCP3561_ReadADCData(&hspi1);
+	  adc_volt[3] = ((float)adc_lsb[3])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	  //printf("CH4 \t%d %.5f V\n\n", (int)adc_val, adc_volts);
+	  printf("%d\t%d\t%d\t%d\t%.4f\t%.4f\t%.4f\t%.4f\n",adc_lsb[0],adc_lsb[1],adc_lsb[2],adc_lsb[3],adc_volt[0],adc_volt[1],adc_volt[2],adc_volt[3]);
+*/
+
 	  // CH1 floating --> 80230 0.02468 V
 	  // CH1 connected to Vref --> 8388607 2.58000 V
 	  // seems correct
