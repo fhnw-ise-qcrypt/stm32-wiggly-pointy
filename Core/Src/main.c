@@ -155,7 +155,7 @@ int main(void)
   /* @important DIABLE HIGH VOLTAGE MEMS DRIVER !
    * @see   p. 24 of MEMS_Drivers_5.x_User_Guide.pdf
    * @note  ACTIVE HIGH --> LOW = disabled */
-  HAL_GPIO_WritePin(MEMS_HV_EN_GPIO_Port, MEMS_HV_EN_Pin, GPIO_RESET);
+  HAL_GPIO_WritePin(MEMS_HV_EN_GPIO_Port, MEMS_HV_EN_Pin, GPIO_PIN_RESET);
 
   printf("boink\n");
 
@@ -201,19 +201,19 @@ int main(void)
   uint8_t dac_data[8];
   dac_data[0] = 0x28;
   dac_data[1] = 0x00;
-  dac_Data[2] = 0x01;
+  dac_data[2] = 0x01;
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // FULL RESET
   dac_data[0] = 0x38;
   dac_data[1] = 0x00;
-  dac_Data[2] = 0x01;
+  dac_data[2] = 0x01;
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE INTERNAL REFERENCE
   dac_data[0] = 0x20;
   dac_data[1] = 0x00;
-  dac_Data[2] = 0x0F;
+  dac_data[2] = 0x0F;
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE ALL DAC CHANNELS
   dac_data[0] = 0x30;
   dac_data[1] = 0x00;
-  dac_Data[2] = 0x00;
+  dac_data[2] = 0x00;
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
 
   /* USER CODE END 2 */
