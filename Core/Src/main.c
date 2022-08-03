@@ -97,6 +97,9 @@ volatile uint32_t adc_val;
 volatile bool setup_done;
 float adc_volts;
 
+volatile uint8_t spi1_tx_buf[8];
+volatile uint8_t spi1_rx_buf[8];
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -212,7 +215,7 @@ int main(void)
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
   MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
 
-
+  spi1_tx_buf[0] = MCP3561_DEVICE_ADDRESS_MASK | 1; // [a a 0 0 0 0 0 1]
   setup_done = true;
   /* USER CODE END 2 */
 
@@ -224,34 +227,34 @@ int main(void)
 
     /* USER CODE BEGIN 3 */
 	  //printf("\n");
-	  //HAL_Delay(100);
 	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 	  uint32_t adc_lsb[4];
 	  float adc_volt[4];
 
-	  /*
-	  int lego = HAL_GPIO_ReadPin(SPI1_nIRQ_GPIO_Port, SPI1_nIRQ_Pin);
 
+	  HAL_Delay(500);
+	  int lego = HAL_GPIO_ReadPin(SPI1_IRQ_GPIO_Port, SPI1_IRQ_Pin);
 		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
 		HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
 		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
-
-
-	  printf(""BYTE_TO_BINARY_PATTERN"\t"BYTE_TO_BINARY_PATTERN"\t"BYTE_TO_BINARY_PATTERN"\t"BYTE_TO_BINARY_PATTERN"\t%d\n",
+	  printf(""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN"\t%d\n",
 			  BYTE_TO_BINARY(spi1_rx_buf[0]),
 			  BYTE_TO_BINARY(spi1_rx_buf[1]),
 			  BYTE_TO_BINARY(spi1_rx_buf[2]),
-			  BYTE_TO_BINARY(spi1_rx_buf[3]), lego);
-			  */
+			  BYTE_TO_BINARY(spi1_rx_buf[3]),
+			  BYTE_TO_BINARY(spi1_rx_buf[4]),
+			  BYTE_TO_BINARY(spi1_rx_buf[5]), lego);
 
+
+/*
 	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
 	  HAL_Delay(81);
 	  adc_lsb[0] = MCP3561_ReadADCData(&hspi1);
 	  adc_volt[0] = ((float)adc_lsb[0])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
 	  printf("CH1 \t%d \t%.5f\n", (int)adc_lsb[0], adc_volt[0]);
 
-	  /*
+/*
 	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH2, MCP3561_MUX_CH3);
 	  HAL_Delay(81);
 	  adc_lsb[1] = MCP3561_ReadADCData(&hspi1);
