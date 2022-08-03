@@ -19,6 +19,10 @@
 
 #include "mirrorcle_mems_driver.h"
 
+void MEMS_DRIVER_Write_Voltage(SPI_HandleTypeDef *hspi, uint8_t chan, uint8_t volt){
+
+}
+
 void MEMS_DRIVER_Write_Channel(SPI_HandleTypeDef *hspi){
 	uint8_t cmd[3];
 	// manually operate the !CS signal, because the STM32 hardware NSS signal is (sadly) useless

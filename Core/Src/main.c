@@ -23,6 +23,7 @@
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 #include "mcp3564.h"
+#include "mirrorcle_mems_driver.h"
 
 /* USER CODE END Includes */
 
@@ -152,10 +153,7 @@ int main(void)
   MX_TIM13_Init();
   /* USER CODE BEGIN 2 */
 
-  /* @important DIABLE HIGH VOLTAGE MEMS DRIVER !
-   * @see   p. 24 of MEMS_Drivers_5.x_User_Guide.pdf
-   * @note  ACTIVE HIGH --> LOW = disabled */
-  HAL_GPIO_WritePin(MEMS_HV_EN_GPIO_Port, MEMS_HV_EN_Pin, GPIO_PIN_RESET);
+  MEMS_DRIVER_HV_Disable();
 
   printf("boink\n");
 
@@ -175,15 +173,12 @@ int main(void)
   MCP3561_PrintRegisters(&hspi1);
   printf("\n");
 
-  // @note configure the chip inside the Init() function
+  // @note configure the chip inside the mcp3561_conf.h
   MCP3561_Init(&hspi1);
   printf("\n");
   HAL_Delay(10);
   MCP3561_PrintRegisters(&hspi1);
   printf("\n");
-
-
-  setup_done = true;
 
   /* @brief MEMS mirror DAC setup
    * Set up DAC. Following the AD5664 DAC datasheet, we recommend the following
@@ -216,6 +211,9 @@ int main(void)
   dac_data[2] = 0x00;
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
   MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
+
+
+  setup_done = true;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -231,6 +229,21 @@ int main(void)
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
 	  uint32_t adc_lsb[4];
 	  float adc_volt[4];
+
+	  /*
+	  int lego = HAL_GPIO_ReadPin(SPI1_nIRQ_GPIO_Port, SPI1_nIRQ_Pin);
+
+		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
+		HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
+		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
+
+
+	  printf(""BYTE_TO_BINARY_PATTERN"\t"BYTE_TO_BINARY_PATTERN"\t"BYTE_TO_BINARY_PATTERN"\t"BYTE_TO_BINARY_PATTERN"\t%d\n",
+			  BYTE_TO_BINARY(spi1_rx_buf[0]),
+			  BYTE_TO_BINARY(spi1_rx_buf[1]),
+			  BYTE_TO_BINARY(spi1_rx_buf[2]),
+			  BYTE_TO_BINARY(spi1_rx_buf[3]), lego);
+			  */
 
 	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
 	  HAL_Delay(81);
