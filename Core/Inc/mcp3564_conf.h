@@ -64,7 +64,7 @@
 */
 
 
-//@note  4-channel, auto conversion in SCAN mode at fs = 110 Hz max.
+//@note  4-channel, auto conversion in SCAN mode at fs = 1 Hz max.
 //       32 bit data format with CHannel ID
 #define MCP3561_USERCONF_REG0 (MCP3561_CONFIG0_CLK_SEL_EXT | MCP3561_CONFIG0_ADC_MODE_CONV | MCP3561_CONFIG0_CS_SEL_NONE)
 #define MCP3561_USERCONF_REG1 (MCP3561_CONFIG1_OSR_4096 | MCP3561_CONFIG1_AMCLK_DIV0)
