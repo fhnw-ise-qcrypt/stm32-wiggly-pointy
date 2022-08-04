@@ -64,6 +64,8 @@ void Error_Handler(void);
 #define TIM14_COUNT_PERIOD (64000-1)
 #define TIM13_COUNT_PERIOD (64000-1)
 #define TIM16_COUNT_PERIOD (64000-1)
+#define IWDG_COUNTER_VAL 128
+#define IWDG_WINDOW_VAL 128
 #define SPI1_CS_Pin GPIO_PIN_4
 #define SPI1_CS_GPIO_Port GPIOA
 #define SPI1_nIRQ_Pin GPIO_PIN_1

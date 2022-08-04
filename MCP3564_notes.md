@@ -8,40 +8,6 @@
 Delay(50) required for polling each channel because t_conv = 33ms
 using config:
 
-```c
-	// be careful with the bitwise or operator "|"
-	cmd[0]  = MCP3561_CONFIG0_WRITE;
-	cmd[1]  = MCP3561_CONFIG0_CLK_SEL_EXT;   // clock selection
-	cmd[1] |= MCP3561_CONFIG0_ADC_MODE_CONV; // standby or converting
-	cmd[1] |= MCP3561_CONFIG0_CS_SEL_NONE;   // input current
-	_MCP3561_write(hspi, cmd, 2);
-
-	cmd[0]  = MCP3561_CONFIG1_WRITE;
-	cmd[1]  = MCP3561_CONFIG1_OSR_4096;       // over sampling rate
-	cmd[1] |= MCP3561_CONFIG1_AMCLK_DIV8;    // sampling clock prescaler
-	_MCP3561_write(hspi, cmd, 2);
-
-	cmd[0]  = MCP3561_CONFIG2_WRITE;
-	cmd[1]  = MCP3561_CONFIG2_BOOST_x1;   // Boost
-	cmd[1] |= MCP3561_CONFIG2_GAIN_x1;    // Gain
-	cmd[1] |= MCP3561_CONFIG2_AZ_MUX_OFF; // offset cancellation algorithm
-	cmd[1] += 3; // last two bits must always be '11'
-	_MCP3561_write(hspi, cmd, 2);
-
-	cmd[0]  = MCP3561_CONFIG3_WRITE;
-	cmd[1]  = MCP3561_CONFIG3_CONV_MODE_CONTINUOUS; // conversion mode
-	cmd[1] |= MCP3561_CONFIG3_DATA_FORMAT_24BIT;    // SPI output data format, (32 and 24 bit available)
-	cmd[1] |= MCP3561_CONFIG3_CRCCOM_OFF;           // CRC
-	cmd[1] |= MCP3561_CONFIG3_GAINCAL_OFF;          // gain calibration
-	cmd[1] |= MCP3561_CONFIG3_OFFCAL_OFF;           // offset calibration
-	_MCP3561_write(hspi, cmd, 2);
-
-	cmd[0]  = MCP3561_IRQ_WRITE;
-	cmd[1]  = MCP3561_IRQ_MODE_IRQ_HIGH;  // IRQ default pin state
-	cmd[1] |= MCP3561_IRQ_FASTCMD_ON;     // fast commands
-	cmd[1] |= MCP3561_IRQ_STP_ON;         // start of conversion IRQ
-	_MCP3561_write(hspi, cmd, 2);
-```
 
 polling:
 

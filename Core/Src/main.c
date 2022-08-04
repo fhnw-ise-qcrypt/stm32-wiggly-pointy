@@ -60,6 +60,17 @@
 	#define TIM16_COUNT_PERIOD (32000-1)
 #endif
 
+// @todo this IWDG is so f*cking wrong
+// 3000 ms should be a CTR value of 128 but its not even 1000 ms
+// CTR value of 1024 works when refreshing every second
+#ifdef IWDG_COUNTER_VAL
+	#undef IWDG_COUNTER_VAL
+	#define IWDG_COUNTER_VAL (1024)
+#endif
+#ifdef IWDG_WINDOW_VAL
+	#undef IWDG_WINDOW_VAL
+	#define IWDG_WINDOW_VAL (1024)
+#endif
 
 /* @brief calibrated, measured ADC reference voltage (2.5V)
  * @todo  calibrate this voltage with precise multimeter
@@ -76,6 +87,8 @@
 /* USER CODE END PM */
 
 /* Private variables ---------------------------------------------------------*/
+IWDG_HandleTypeDef hiwdg;
+
 SPI_HandleTypeDef hspi1;
 SPI_HandleTypeDef hspi2;
 
@@ -110,6 +123,7 @@ static void MX_USART2_UART_Init(void);
 static void MX_TIM14_Init(void);
 static void MX_TIM16_Init(void);
 static void MX_TIM13_Init(void);
+static void MX_IWDG_Init(void);
 /* USER CODE BEGIN PFP */
 
 /* USER CODE END PFP */
@@ -153,11 +167,13 @@ int main(void)
   MX_TIM14_Init();
   MX_TIM16_Init();
   MX_TIM13_Init();
+  MX_IWDG_Init();
   /* USER CODE BEGIN 2 */
 
   MEMS_DRIVER_HV_Disable();
 
   printf("boink\n");
+  HAL_IWDG_Refresh(&hiwdg);
 
   // start MEMS FCLK_X
   HAL_TIM_Base_Start(&htim14);
@@ -168,19 +184,14 @@ int main(void)
   HAL_TIM_Base_Start(&htim16);
   HAL_TIM_OC_Start(&htim16, TIM_CHANNEL_1);
   //htim16.Instance->CCR1 = 2;
-  HAL_Delay(10);
-
-  MCP3561_Reset(&hspi1);
-  HAL_Delay(10);
-  MCP3561_PrintRegisters(&hspi1);
-  printf("\n");
+  HAL_IWDG_Refresh(&hiwdg);
 
   // @note configure the chip inside the mcp3561_conf.h
-  MCP3561_Init(&hspi1);
-  printf("\n");
+  MCP3561_Reset(&hspi1);
   HAL_Delay(10);
-  MCP3561_PrintRegisters(&hspi1);
-  printf("\n");
+  MCP3561_Init(&hspi1);
+
+  HAL_IWDG_Refresh(&hiwdg);
 
   /* @brief MEMS mirror DAC setup
    * Set up DAC. Following the AD5664 DAC datasheet, we recommend the following
@@ -216,6 +227,7 @@ int main(void)
 
   HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
 
+  HAL_IWDG_Refresh(&hiwdg);
   // prepare ADC stream read request
   spi1_tx_buf[0] = MCP3561_DEVICE_ADDRESS_MASK | 1; // [a a 0 0 0 0 0 1]
 
@@ -224,6 +236,8 @@ int main(void)
   HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
   flag_new_adc_data = 0;
+
+  HAL_IWDG_Refresh(&hiwdg);
   setup_done = true;
   /* USER CODE END 2 */
 
@@ -237,8 +251,11 @@ int main(void)
 	static float volt = 0.0f;
 
 	// wait for DRDY interrupt
-	while( flag_new_adc_data == 0){};
+	while( flag_new_adc_data == 0){
+		  // HAL_IWDG_Refresh(&hiwdg);
+	};
 	flag_new_adc_data = 0;
+	HAL_IWDG_Refresh(&hiwdg);
 
 	for(int i=0; i<4; i++){
 		volt = ((float)adc_channels[i])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
@@ -263,10 +280,11 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_LSI|RCC_OSCILLATORTYPE_HSE;
   RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.HSEPredivValue = RCC_HSE_PREDIV_DIV1;
   RCC_OscInitStruct.HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct.LSIState = RCC_LSI_ON;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
   RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
   RCC_OscInitStruct.PLL.PLLMUL = RCC_PLL_MUL8;
@@ -294,6 +312,35 @@ void SystemClock_Config(void)
   {
     Error_Handler();
   }
+}
+
+/**
+  * @brief IWDG Initialization Function
+  * @param None
+  * @retval None
+  */
+static void MX_IWDG_Init(void)
+{
+
+  /* USER CODE BEGIN IWDG_Init 0 */
+
+  /* USER CODE END IWDG_Init 0 */
+
+  /* USER CODE BEGIN IWDG_Init 1 */
+
+  /* USER CODE END IWDG_Init 1 */
+  hiwdg.Instance = IWDG;
+  hiwdg.Init.Prescaler = IWDG_PRESCALER_256;
+  hiwdg.Init.Window = IWDG_WINDOW_VAL;
+  hiwdg.Init.Reload = IWDG_COUNTER_VAL;
+  if (HAL_IWDG_Init(&hiwdg) != HAL_OK)
+  {
+    Error_Handler();
+  }
+  /* USER CODE BEGIN IWDG_Init 2 */
+
+  /* USER CODE END IWDG_Init 2 */
+
 }
 
 /**
