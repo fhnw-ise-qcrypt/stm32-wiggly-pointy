@@ -100,6 +100,10 @@ float adc_volts;
 volatile uint8_t spi1_tx_buf[8];
 volatile uint8_t spi1_rx_buf[8];
 
+const uint8_t MCP3564_SCAN_ID_TO_CHANNEL[16] = {
+		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+		0x01, 0x02, 0x03, 0x04, 0xff, 0xff, 0xff, 0xff};
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -216,6 +220,13 @@ int main(void)
   MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
 
   spi1_tx_buf[0] = MCP3561_DEVICE_ADDRESS_MASK | 1; // [a a 0 0 0 0 0 1]
+  printf(""BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN"\n",
+  			  BYTE_TO_BINARY(spi1_tx_buf[0]),
+  			  BYTE_TO_BINARY(spi1_tx_buf[1]),
+  			  BYTE_TO_BINARY(spi1_tx_buf[2]),
+  			  BYTE_TO_BINARY(spi1_tx_buf[3]),
+  			  BYTE_TO_BINARY(spi1_tx_buf[4]));
+  printf("[CH][+-] [ data ] [ data ] [ data ]\n");
   setup_done = true;
   /* USER CODE END 2 */
 
@@ -229,57 +240,30 @@ int main(void)
 	  //printf("\n");
 	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
 	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
-	  uint32_t adc_lsb[4];
-	  float adc_volt[4];
 
+	// wait for DRDY interrupt
+	while( HAL_GPIO_ReadPin(SPI1_IRQ_GPIO_Port, SPI1_IRQ_Pin) == 1){};
 
-	  HAL_Delay(500);
-	  int lego = HAL_GPIO_ReadPin(SPI1_IRQ_GPIO_Port, SPI1_IRQ_Pin);
-		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
-		HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
-		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
-	  printf(""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN"\t%d\n",
-			  BYTE_TO_BINARY(spi1_rx_buf[0]),
+	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
+	HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
+	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
+
+	uint8_t channel_id = MCP3564_SCAN_ID_TO_CHANNEL[ (spi1_rx_buf[1] >> 4) & 0x0f ];
+	uint32_t value = (spi1_rx_buf[2] << 16) | (spi1_rx_buf[3] << 8) | spi1_rx_buf[4];
+	float volt = ((float)value)*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+
+	printf(" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" ",
 			  BYTE_TO_BINARY(spi1_rx_buf[1]),
 			  BYTE_TO_BINARY(spi1_rx_buf[2]),
 			  BYTE_TO_BINARY(spi1_rx_buf[3]),
-			  BYTE_TO_BINARY(spi1_rx_buf[4]),
-			  BYTE_TO_BINARY(spi1_rx_buf[5]), lego);
+			  BYTE_TO_BINARY(spi1_rx_buf[4]));
+	printf("CH %d : \t%d \t%.5f V\n", channel_id, value, volt);
 
+	// 10110000 00011100 00100111 10001010 CH 4 : 	1845130 	0.56749 V
+	// 10100000 00110111 11111000 11011110 CH 3 : 	3668190 	1.12819 V
+	// 10010000 01010011 10001101 10000111 CH 2 : 	5475719 	1.68411 V
+	// 10000000 01101110 11000011 11111010 CH 1 : 	7259130 	2.23262 V
 
-/*
-	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
-	  HAL_Delay(81);
-	  adc_lsb[0] = MCP3561_ReadADCData(&hspi1);
-	  adc_volt[0] = ((float)adc_lsb[0])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-	  printf("CH1 \t%d \t%.5f\n", (int)adc_lsb[0], adc_volt[0]);
-
-/*
-	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH2, MCP3561_MUX_CH3);
-	  HAL_Delay(81);
-	  adc_lsb[1] = MCP3561_ReadADCData(&hspi1);
-	  adc_volt[1] = ((float)adc_lsb[1])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-	  //printf("CH2 \t%d %.5f V\n", (int)adc_val, adc_volts);
-
-	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH4, MCP3561_MUX_CH5);
-	  HAL_Delay(81);
-	  adc_lsb[2] = MCP3561_ReadADCData(&hspi1);
-	  adc_volt[2] = ((float)adc_lsb[2])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-	  //printf("CH3 \t%d %.5f V\n", (int)adc_val, adc_volts);
-
-	  MCP3561_Channels(&hspi1, MCP3561_MUX_CH6, MCP3561_MUX_CH7);
-	  HAL_Delay(81);
-	  adc_lsb[3] = MCP3561_ReadADCData(&hspi1);
-	  adc_volt[3] = ((float)adc_lsb[3])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-	  //printf("CH4 \t%d %.5f V\n\n", (int)adc_val, adc_volts);
-	  printf("%d\t%d\t%d\t%d\t%.4f\t%.4f\t%.4f\t%.4f\n",adc_lsb[0],adc_lsb[1],adc_lsb[2],adc_lsb[3],adc_volt[0],adc_volt[1],adc_volt[2],adc_volt[3]);
-*/
-
-	  // CH1 floating --> 80230 0.02468 V
-	  // CH1 connected to Vref --> 8388607 2.58000 V
-	  // seems correct
-
-	  //printf("%d\n", (int)adc_val);  // updated in ISR
   }
   /* USER CODE END 3 */
 }
