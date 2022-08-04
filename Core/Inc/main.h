@@ -66,9 +66,9 @@ void Error_Handler(void);
 #define TIM16_COUNT_PERIOD (64000-1)
 #define SPI1_CS_Pin GPIO_PIN_4
 #define SPI1_CS_GPIO_Port GPIOA
-#define SPI1_IRQ_Pin GPIO_PIN_1
-#define SPI1_IRQ_GPIO_Port GPIOB
-#define SPI1_IRQ_EXTI_IRQn EXTI1_IRQn
+#define SPI1_nIRQ_Pin GPIO_PIN_1
+#define SPI1_nIRQ_GPIO_Port GPIOB
+#define SPI1_nIRQ_EXTI_IRQn EXTI1_IRQn
 #define SPI2_CS_Pin GPIO_PIN_14
 #define SPI2_CS_GPIO_Port GPIOB
 #define MEMS_HV_EN_Pin GPIO_PIN_8

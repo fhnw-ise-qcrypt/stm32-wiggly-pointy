@@ -68,13 +68,6 @@
  * */
 #define VREF_2V5_CALIBRATED (2.58f)
 
-/* @brief MEMS mirror bias voltage (taken from datasheet of specific mirror)
- * Example, if a device datasheet states Vbias of 80V:
- * The Vbias digital value would be (80/200)*65535 = 26214
- * @todo  find datasheet of S/N irgendöppis
- */
-#define MEMS_VBIAS_CODE (uint32_t)(65535/200)*100)
-
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -95,14 +88,16 @@ UART_HandleTypeDef huart2;
 /* USER CODE BEGIN PV */
 volatile uint32_t adc_val;
 volatile bool setup_done;
-float adc_volts;
 
-volatile uint8_t spi1_tx_buf[8];
-volatile uint8_t spi1_rx_buf[8];
+uint8_t spi1_tx_buf[8];
+uint8_t spi1_rx_buf[8];
+
+volatile uint32_t adc_channels[4];
+volatile bool flag_new_adc_data;
 
 const uint8_t MCP3564_SCAN_ID_TO_CHANNEL[16] = {
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
-		0x01, 0x02, 0x03, 0x04, 0xff, 0xff, 0xff, 0xff};
+		0x00, 0x01, 0x02, 0x03, 0xff, 0xff, 0xff, 0xff};
 
 /* USER CODE END PV */
 
@@ -219,14 +214,16 @@ int main(void)
   HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
   MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
 
+  HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
+
+  // prepare ADC stream read request
   spi1_tx_buf[0] = MCP3561_DEVICE_ADDRESS_MASK | 1; // [a a 0 0 0 0 0 1]
-  printf(""BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN""BYTE_TO_BINARY_PATTERN"\n",
-  			  BYTE_TO_BINARY(spi1_tx_buf[0]),
-  			  BYTE_TO_BINARY(spi1_tx_buf[1]),
-  			  BYTE_TO_BINARY(spi1_tx_buf[2]),
-  			  BYTE_TO_BINARY(spi1_tx_buf[3]),
-  			  BYTE_TO_BINARY(spi1_tx_buf[4]));
-  printf("[CH][+-] [ data ] [ data ] [ data ]\n");
+
+  // read first data (aka. clear any pending DRDY IRQ)
+  HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
+  HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
+  HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
+  flag_new_adc_data = 0;
   setup_done = true;
   /* USER CODE END 2 */
 
@@ -237,32 +234,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-	  //printf("\n");
-	  HAL_GPIO_TogglePin(LED1_GPIO_Port, LED1_Pin);
-	  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
+	static float volt = 0.0f;
 
 	// wait for DRDY interrupt
-	while( HAL_GPIO_ReadPin(SPI1_IRQ_GPIO_Port, SPI1_IRQ_Pin) == 1){};
+	while( flag_new_adc_data == 0){};
+	flag_new_adc_data = 0;
 
-	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
-	HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
-	HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
-
-	uint8_t channel_id = MCP3564_SCAN_ID_TO_CHANNEL[ (spi1_rx_buf[1] >> 4) & 0x0f ];
-	uint32_t value = (spi1_rx_buf[2] << 16) | (spi1_rx_buf[3] << 8) | spi1_rx_buf[4];
-	float volt = ((float)value)*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-
-	printf(" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" ",
-			  BYTE_TO_BINARY(spi1_rx_buf[1]),
-			  BYTE_TO_BINARY(spi1_rx_buf[2]),
-			  BYTE_TO_BINARY(spi1_rx_buf[3]),
-			  BYTE_TO_BINARY(spi1_rx_buf[4]));
-	printf("CH %d : \t%d \t%.5f V\n", channel_id, value, volt);
-
-	// 10110000 00011100 00100111 10001010 CH 4 : 	1845130 	0.56749 V
-	// 10100000 00110111 11111000 11011110 CH 3 : 	3668190 	1.12819 V
-	// 10010000 01010011 10001101 10000111 CH 2 : 	5475719 	1.68411 V
-	// 10000000 01101110 11000011 11111010 CH 1 : 	7259130 	2.23262 V
+	for(int i=0; i<4; i++){
+		volt = ((float)adc_channels[i])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+		printf("%.5f\t", volt);
+	}
+	printf("\n");
 
   }
   /* USER CODE END 3 */
@@ -596,11 +578,11 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_HIGH;
   HAL_GPIO_Init(SPI1_CS_GPIO_Port, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : SPI1_IRQ_Pin */
-  GPIO_InitStruct.Pin = SPI1_IRQ_Pin;
-  GPIO_InitStruct.Mode = GPIO_MODE_IT_RISING;
+  /*Configure GPIO pin : SPI1_nIRQ_Pin */
+  GPIO_InitStruct.Pin = SPI1_nIRQ_Pin;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
-  HAL_GPIO_Init(SPI1_IRQ_GPIO_Port, &GPIO_InitStruct);
+  HAL_GPIO_Init(SPI1_nIRQ_GPIO_Port, &GPIO_InitStruct);
 
   /*Configure GPIO pin : SPI2_CS_Pin */
   GPIO_InitStruct.Pin = SPI2_CS_Pin;
@@ -656,33 +638,7 @@ PUTCHAR_PROTOTYPE {
 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	/* @todo correct EXTI pin */
-    if ( GPIO_Pin == GPIO_PIN_6) {
-    	if(setup_done){
-    		uint8_t val[5] = {0,0,0,0,0};
-    		uint8_t cmd[5] = {0,0,0,0,0};
-    		cmd[0] = MCP3561_SREAD_DATA_COMMAND;
-    		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
-    		// non-blocking "HAL_SPI_TransmitReceive_IT" does not work
-    		// because we need to create CS signal manually
-    		// the timout therefore must not be greater than 1/fs
-    		// e.g. at 300 Hz --> 3ms
-    		HAL_SPI_TransmitReceive(&hspi1, &cmd[0], &val[0], 5, 1);
-    		HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
-    		adc_val = (val[1] << 16) | (val[2] << 8) | val[3];
 
-    		float volts = (float)adc_val/(8388607.0f)*3.3f;
-    		uint8_t str[11];
-    		for(int i=0; i<10; i++)
-    			str[i] = ' ';
-    		int i = (int)(volts*9.0f/3.3f);
-    		str[i] = '#';
-    		str[11] = 0;
-    		printf("%s\n", str);
-    		//printf("%03f\n", volts);
-    		//printf("%d\n", (int)adc_val);  // updated in ISR
-    	}
-    }
 }
 /* USER CODE END 4 */
 

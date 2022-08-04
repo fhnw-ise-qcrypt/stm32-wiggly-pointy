@@ -58,7 +58,12 @@
 /* External variables --------------------------------------------------------*/
 
 /* USER CODE BEGIN EV */
-
+extern SPI_HandleTypeDef hspi1;
+extern const uint8_t MCP3564_SCAN_ID_TO_CHANNEL[16];
+extern volatile uint32_t adc_channels[4];
+extern volatile bool flag_new_adc_data;
+extern uint8_t spi1_tx_buf[8];
+extern uint8_t spi1_rx_buf[8];
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -205,9 +210,28 @@ void SysTick_Handler(void)
 void EXTI1_IRQHandler(void)
 {
   /* USER CODE BEGIN EXTI1_IRQn 0 */
+  static uint8_t channel_id = 0;
+  static uint32_t value = 0;
+  //static float volt = 0.0f;
+  HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
+
+  /* @todo HAL_SPI_TransmitReceive() is a BLOCKING function
+   * it SHOULD NOT BE USED IN AN INTERRUPT
+   * but HAL_SPI_TransmitReceive_IT() is just kind of broken ?? */
+  HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 0);
+  HAL_SPI_TransmitReceive(&hspi1, spi1_tx_buf, spi1_rx_buf, 5, 3);
+  HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
+
+  channel_id = MCP3564_SCAN_ID_TO_CHANNEL[ (spi1_rx_buf[1] >> 4) & 0x0f ];
+  if(channel_id <= 4){
+	  value = (spi1_rx_buf[2] << 16) | (spi1_rx_buf[3] << 8) | spi1_rx_buf[4];
+	  adc_channels[channel_id] = value;
+
+	  if(channel_id == 3) flag_new_adc_data = 1;  // only update once a SCAN cycle is complete
+  }
 
   /* USER CODE END EXTI1_IRQn 0 */
-  HAL_GPIO_EXTI_IRQHandler(SPI1_IRQ_Pin);
+  HAL_GPIO_EXTI_IRQHandler(SPI1_nIRQ_Pin);
   /* USER CODE BEGIN EXTI1_IRQn 1 */
 
   /* USER CODE END EXTI1_IRQn 1 */
