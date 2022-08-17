@@ -18,11 +18,11 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 - 🔄 seperate PSD board
 	+ ✅ place PSD sensor 
 	+ ✅ place potentiometer
-	+ 🔘 configure offest voltage
+	+ 🔄 configure offest voltage --> HOW?? any positive voltage 0...5V seems to work
 - ✅ **MCP3564** ADC from PSD functionality
 	+ ✅ ADC has IRQ data "streaming"
-	+ 🔘 calibrate ADC voltage values
-	+ 🔘 calibrate PSD position values (**how?**)
+	+ 🔄 calibrate ADC voltage values
+	+ 🔄 calibrate PSD position values (**how?**)
 - 🔄 **AD5664R** DAC for MEMS mirror functionality
 	+ ✅ include DAC library
 	+ ✅ generate FCLK for driver board using TIM
