@@ -24,6 +24,7 @@
 /* USER CODE BEGIN Includes */
 #include "mcp3564.h"
 #include "mirrorcle_mems_driver.h"
+#include "math.h"
 
 /* USER CODE END Includes */
 
@@ -48,16 +49,17 @@
  * TIM channels are "toggle on match", so output is half the frequency of
  * the TIM period. e.g. desired = 1kHz @CPU = 64MHz
  * Period = (64MHz/1kHz/2 -1) = (32000-1)
+ * Period = (64MHz/240Hz/2-1) = (2222-1)
  */
 // TIM14_CH1 is FCLK_X (MEMS X-axis filter clock)
 #ifdef TIM14_COUNT_PERIOD
 	#undef TIM14_COUNT_PERIOD
-	#define TIM14_COUNT_PERIOD (32000-1)
+	#define TIM14_COUNT_PERIOD (2221) //(32000-1)
 #endif
 // TIM16_CH1 is FCLK_Y (MEMS Y-axis filter clock)
 #ifdef TIM16_COUNT_PERIOD
 	#undef TIM16_COUNT_PERIOD
-	#define TIM16_COUNT_PERIOD (32000-1)
+	#define TIM16_COUNT_PERIOD (2221) // (32000-1)
 #endif
 
 // @todo this IWDG is so f*cking wrong
@@ -193,38 +195,8 @@ int main(void)
 
   HAL_IWDG_Refresh(&hiwdg);
 
-  /* @brief MEMS mirror DAC setup
-   * Set up DAC. Following the AD5664 DAC datasheet, we recommend the following
-   * initialization sequence which must be run by the master controller which
-   * communicates commands to the PicoAmp on every power up of the PicoAmp.
-   * The sequence is to reset the DAC, turn on its internal reference,
-   * enable all 4 channels, and set up for software loading.
-   *
-   * 2621441 Decimal or 0x280001 to command FULL RESET
-   * 3670017 Decimal or 0x380001 to command ENABLE INTERNAL REFERENCE
-   * 2097167 Decimal or 0x20000F to command ENABLE ALL DAC CHANNELS
-   * 3145728 Decimal or 0x300000 to command ENABLE SOFTWARE LDAC
-   */
-
-  uint8_t dac_data[8];
-  dac_data[0] = 0x28;
-  dac_data[1] = 0x00;
-  dac_data[2] = 0x01;
-  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // FULL RESET
-  dac_data[0] = 0x38;
-  dac_data[1] = 0x00;
-  dac_data[2] = 0x01;
-  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE INTERNAL REFERENCE
-  dac_data[0] = 0x20;
-  dac_data[1] = 0x00;
-  dac_data[2] = 0x0F;
-  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE ALL DAC CHANNELS
-  dac_data[0] = 0x30;
-  dac_data[1] = 0x00;
-  dac_data[2] = 0x00;
-  HAL_SPI_Transmit(&hspi2, dac_data, 3, 10); // ENABLE SOFTWARE LDAC
+  MEMS_DRIVER_Init(&hspi2);
   MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
-
   HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
 
   HAL_IWDG_Refresh(&hiwdg);
@@ -237,6 +209,13 @@ int main(void)
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
   flag_new_adc_data = 0;
 
+  float f,k,Ts,t,sx,sy;
+  k=0;
+  f=10;
+  Ts=0.001f;
+  t=0;
+  MEMS_DRIVER_HV_Enable();
+
   HAL_IWDG_Refresh(&hiwdg);
   setup_done = true;
   /* USER CODE END 2 */
@@ -248,6 +227,20 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+	if(++k >= 1000) k=0;
+	t = k*Ts;
+	sx = sinf(2*3.14159*f*t);
+	sy = cosf(2*3.14159*f*t);
+
+	MEMS_DRIVER_SetAngle(sx, sy);
+	MEMS_DRIVER_Write_Channel(&hspi2);
+	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED2_Pin);
+    HAL_Delay(1);
+
+    HAL_IWDG_Refresh(&hiwdg);
+
+
+    /*
 	static float volt = 0.0f;
 
 	// wait for DRDY interrupt
@@ -262,6 +255,7 @@ int main(void)
 		printf("%.5f\t", volt);
 	}
 	printf("\n");
+	*/
 
   }
   /* USER CODE END 3 */
