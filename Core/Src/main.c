@@ -209,7 +209,14 @@ int main(void)
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
   flag_new_adc_data = 0;
 
-  //MEMS_DRIVER_HV_Enable();
+  MEMS_DRIVER_HV_Enable();
+
+  float f,k,Ts,t,sx,sy;
+  k=0;
+  f=2;
+  Ts=0.001f;
+  t=0;
+  MEMS_DRIVER_HV_Enable();
 
   HAL_IWDG_Refresh(&hiwdg);
   setup_done = true;
@@ -232,30 +239,45 @@ int main(void)
 		printf("%.5f\t", volt);
 	}
 	*/
+
 	// ADC channels
 	// [0] unused / not measured
 	// [1] X-axis ?
 	// [2] sum current (can be used as brightness detector)
 	// [3] Y-axis ?
-
 	volt = ((float)adc_channels[2])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-	if(volt < 1.0){
+	printf("%.5f\t", volt);
+	//if(volt < 1.0){
 		volt = ((float)adc_channels[1])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-		volt = volt -1.25;
-		printf("%.5f\t", volt);
+		volt = volt -1.25 -0.055;
+		volt *= 10;
+		printf("%.2f\t", volt);
 		volt = ((float)adc_channels[3])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-		volt = volt -1.25;
-		printf("%.5f", volt);
+		volt = volt -1.25 -0.055;
+		volt *= 10;
+		printf("%.2f", volt);
 		printf("\n");
-	}
+	//}
 
 	// wait for DRDY interrupt
 	while( flag_new_adc_data == 0){
 		  // HAL_IWDG_Refresh(&hiwdg);
 	};
 	flag_new_adc_data = 0;
-	HAL_IWDG_Refresh(&hiwdg);
 
+
+	/*
+	HAL_IWDG_Refresh(&hiwdg);
+	HAL_Delay(1);
+	if(++k >= 1000) k=0;
+	t = k*Ts;
+	sx = sinf(2*3.14159*f*t);
+	sy = cosf(2*3.14159*f*t);
+
+	MEMS_DRIVER_SetAngle(sx, sy);
+	MEMS_DRIVER_Write_Channel(&hspi2);
+	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED2_Pin);
+*/
 
   }
   /* USER CODE END 3 */

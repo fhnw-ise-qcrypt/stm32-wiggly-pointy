@@ -27,10 +27,10 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 	+ ✅ include DAC library
 	+ ✅ generate FCLK for driver board using TIM
 	+ ✅ test ⚡️200V⚡️ DC driver without MEMS mirror (sine patterns)
-	+ 🔘 test pattern driver with MEMS mirror
+	+ ✅ test pattern driver with MEMS mirror
 	+ 🔘 angle-to-DAC linearization/calibration from mirrorcle datasheet
-- 🔘 calibrate full system with laser, PSD and mirror
-- 🔘 add watchdog timer if ADC stops working
+- 🔄 calibrate full system with laser, PSD and mirror
+- ✅ add watchdog timer if ADC stops working
 
 ---
 
