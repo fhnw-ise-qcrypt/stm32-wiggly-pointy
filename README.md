@@ -15,10 +15,10 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 	+ ✅ USART debug communication with PC working
 	+ ✅ LEDs working
 	+ ✅ SPI, ADC working (responding)
-- 🔄 seperate PSD board
+- ✅ seperate PSD board
 	+ ✅ place PSD sensor 
 	+ ✅ place potentiometer
-	+ 🔄 configure offest voltage --> HOW?? any positive voltage 0...5V seems to work
+	+ ✅ configure offest voltage --> HOW?? any positive voltage 0...5V seems to work
 - ✅ **MCP3564** ADC from PSD functionality
 	+ ✅ ADC has IRQ data "streaming"
 	+ 🔄 calibrate ADC voltage values
@@ -28,9 +28,9 @@ stm32f373 firmware for tracking laser error detection on a PSD and downward poin
 	+ ✅ generate FCLK for driver board using TIM
 	+ ✅ test ⚡️200V⚡️ DC driver without MEMS mirror (sine patterns)
 	+ ✅ test pattern driver with MEMS mirror
-	+ 🔘 angle-to-DAC linearization/calibration from mirrorcle datasheet
-- 🔄 calibrate full system with laser, PSD and mirror
+	+ 🔄 angle-to-DAC linearization/calibration from mirrorcle datasheet --> is this necessary?
 - ✅ add watchdog timer if ADC stops working
+- 🗓 calibrate full system with laser, PSD and mirror
 
 ---
 

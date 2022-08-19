@@ -114,6 +114,8 @@ const uint8_t MCP3564_SCAN_ID_TO_CHANNEL[16] = {
 		0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 		0x00, 0x01, 0x02, 0x03, 0xff, 0xff, 0xff, 0xff};
 
+float sx,sy, brightness;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -174,8 +176,8 @@ int main(void)
 
   MEMS_DRIVER_HV_Disable();
 
-  printf("boink\n");
-  HAL_IWDG_Refresh(&hiwdg);
+  printf("HAmlo :)\n");
+  HAL_IWDG_Refresh(&hiwdg); // this is how the Watchdog is reset, if not done within 3s, the MCU will be reset
 
   // start MEMS FCLK_X
   HAL_TIM_Base_Start(&htim14);
@@ -188,19 +190,21 @@ int main(void)
   //htim16.Instance->CCR1 = 2;
   HAL_IWDG_Refresh(&hiwdg);
 
-  // @note configure the chip inside the mcp3561_conf.h
-  MCP3561_Reset(&hspi1);
-  HAL_Delay(10);
-  MCP3561_Init(&hspi1);
-
-  HAL_IWDG_Refresh(&hiwdg);
-
+  // load config to DAC for streaming 4 channels
   MEMS_DRIVER_Init(&hspi2);
   MCP3561_Channels(&hspi1, MCP3561_MUX_CH0, MCP3561_MUX_CH1);
   HAL_GPIO_WritePin(LED1_GPIO_Port, LED1_Pin, GPIO_PIN_SET);
 
   HAL_IWDG_Refresh(&hiwdg);
-  // prepare ADC stream read request
+
+  // load config to ADC for continuous conversation of multiple input channels
+  MCP3561_Reset(&hspi1);
+  HAL_Delay(10);
+  MCP3561_Init(&hspi1);
+  // @note configure the chip inside the mcp3561_conf.h
+
+  HAL_IWDG_Refresh(&hiwdg);
+  // prepare ADC stream read request (also used in ISR)
   spi1_tx_buf[0] = MCP3561_DEVICE_ADDRESS_MASK | 1; // [a a 0 0 0 0 0 1]
 
   // read first data (aka. clear any pending DRDY IRQ)
@@ -209,13 +213,7 @@ int main(void)
   HAL_GPIO_WritePin(SPI1_CS_GPIO_Port, SPI1_CS_Pin, 1);
   flag_new_adc_data = 0;
 
-  MEMS_DRIVER_HV_Enable();
-
-  float f,k,Ts,t,sx,sy;
-  k=0;
-  f=2;
-  Ts=0.001f;
-  t=0;
+  // enable 200V source on MEMS driver board, activating MEMS mirror movement
   MEMS_DRIVER_HV_Enable();
 
   HAL_IWDG_Refresh(&hiwdg);
@@ -229,56 +227,57 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-
-
-	static float volt = 0.0f;
-
-/*
-	for(int i=0; i<4; i++){
-		volt = ((float)adc_channels[i])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-		printf("%.5f\t", volt);
-	}
-	*/
+	  /*
+	   * the main loop
+	   * 1. reading from the ADC buffer register, which is filled with values by the ISR
+	   * 2. converting the ADC values to voltage and angles
+	   * 3. write the angles to the MEMS mirror
+	   * 4. reset the watchdog
+	   * 5. wait for the data ready flag to go high from the ISR
+	   *
+	   * What is weird tho:
+	   * According to the PSD application note, the DSP should divide the X and Y values by the brightness
+	   * However, it appears to work without that operation...
+	   * I wouldn't know how to correctly divide it anyways.
+	   * The brightness level probably varies greatly depending on the actual setup in a free space experiment.
+	   * */
 
 	// ADC channels
 	// [0] unused / not measured
 	// [1] X-axis ?
 	// [2] sum current (can be used as brightness detector)
 	// [3] Y-axis ?
-	volt = ((float)adc_channels[2])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-	printf("%.5f\t", volt);
-	//if(volt < 1.0){
-		volt = ((float)adc_channels[1])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-		volt = volt -1.25 -0.055;
-		volt *= 10;
-		printf("%.2f\t", volt);
-		volt = ((float)adc_channels[3])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
-		volt = volt -1.25 -0.055;
-		volt *= 10;
-		printf("%.2f", volt);
-		printf("\n");
-	//}
 
-	// wait for DRDY interrupt
-	while( flag_new_adc_data == 0){
-		  // HAL_IWDG_Refresh(&hiwdg);
-	};
-	flag_new_adc_data = 0;
+	brightness = ((float)adc_channels[2])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	// printf("%.5f\t", brightness);
 
+	/** @todo calibrate */
+	sx = ((float)adc_channels[1])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	sx = sx -1.25 -0.055;
+	sx *= 10;   // convert to degrees ?
+	sx += 1.24; // zeroing, subtract mean value
+	sx /= 2;    // scale down ?
+	sx *= -1;   // invert for MEMS
+	sy = ((float)adc_channels[3])*2*VREF_2V5_CALIBRATED / ((float)0xffffff);
+	sy = sy -1.25 -0.055;
+	sy *= 10;
+	sy += 1.18;
+	sy /= 2;
+	sy *= -1;
 
-	/*
-	HAL_IWDG_Refresh(&hiwdg);
-	HAL_Delay(1);
-	if(++k >= 1000) k=0;
-	t = k*Ts;
-	sx = sinf(2*3.14159*f*t);
-	sy = cosf(2*3.14159*f*t);
-
+	if( fabs(sx) < 1.0 && fabs(sy) < 1.0){
+		printf("%.2f\t%.2f\n", sx, sy);
+	}
 	MEMS_DRIVER_SetAngle(sx, sy);
 	MEMS_DRIVER_Write_Channel(&hspi2);
-	HAL_GPIO_TogglePin(LED1_GPIO_Port, LED2_Pin);
-*/
 
+	// wait for DRDY interrupt...
+	// if the ISR fails to load new data from the ADC within ~3s
+	// --> the watchdog will trigger a full reset
+	HAL_IWDG_Refresh(&hiwdg); // reset watchdog
+	flag_new_adc_data = 0; // clear DRDY flag
+	while( flag_new_adc_data == 0){
+	};
   }
   /* USER CODE END 3 */
 }
